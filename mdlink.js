@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const axios = require('axios');
 
 function getLinksFromMarkdownContent(markdownContent) {
   // Expresión regular para encontrar los enlaces en el contenido del archivo Markdown
@@ -9,7 +10,7 @@ function getLinksFromMarkdownContent(markdownContent) {
   let match;
   while ((match = linkRegex.exec(markdownContent))) {
     const [, text, url] = match;
-    links.push({ href: url, text, });
+    links.push({ href: url, text });
   }
 
   return links;
@@ -22,7 +23,21 @@ function convertToAbsolutePath(file) {
   return file;
 }
 
-module.exports = (file) => {
+function validateLink(link) {
+  return axios.get(link.href)
+    .then((response) => ({
+      ...link,
+      status: response.status,
+      ok: 'ok',
+    }))
+    .catch((error) => ({
+      ...link,
+      status: error.response ? error.response.status : 'Unknown',
+      ok: 'fail',
+    }));
+}
+
+module.exports = (file, options) => {
   return new Promise((resolve, reject) => {
     try {
       // Verificar si el archivo es de tipo .md
@@ -43,18 +58,29 @@ module.exports = (file) => {
       const markdownContent = fs.readFileSync(absoluteFilePath, 'utf8');
 
       // Extraer los enlaces del contenido del archivo Markdown
-      const links = getLinksFromMarkdownContent(markdownContent);
+      let links = getLinksFromMarkdownContent(markdownContent);
 
-       // Agregar la ruta absoluta del archivo a cada objeto de enlace
-       const linksWithAbsolutePath = links.map((link) => ({
-        ...link,
-        file: absoluteFilePath,
-      }));
-
-      resolve(linksWithAbsolutePath);
+      if (options && options.validate) {
+        // Realizar validación para cada enlace
+        const linkPromises = links.map((link) => validateLink(link).then((validatedLink) => ({
+          ...validatedLink,
+          file: absoluteFilePath,
+        })));
+        Promise.all(linkPromises)
+          .then((validatedLinks) => resolve(validatedLinks))
+          .catch((error) => reject(error));
+      } else {
+        // Agregar la ruta absoluta del archivo a cada objeto de enlace
+        links = links.map((link) => ({
+          ...link,
+          file: absoluteFilePath,
+        }));
+        resolve(links);
+      }
     } catch (error) {
       reject(error);
     }
   });
 };
+
 
