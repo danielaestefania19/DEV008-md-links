@@ -2,6 +2,8 @@ const fs = require('fs');
 const path = require('path');
 const axios = require('axios');
 
+
+//Funcion para obtener los links en un array
 function getLinksFromMarkdownContent(markdownContent) {
   // Expresión regular para encontrar los enlaces en el contenido del archivo Markdown
   const linkRegex = /\[([^\]]+)\]\((https?:\/\/[^\)]+)\)/g;
@@ -16,6 +18,8 @@ function getLinksFromMarkdownContent(markdownContent) {
   return links;
 }
 
+
+// Funcion para convertir la ruta relativa a absoluta 
 function convertToAbsolutePath(file) {
   if (!path.isAbsolute(file)) {
     return path.resolve(process.cwd(), file);
@@ -23,6 +27,7 @@ function convertToAbsolutePath(file) {
   return file;
 }
 
+//Función valida un enlace al realizar una solicitud HTTP
 function validateLink(link) {
   return axios.get(link.href)
     .then((response) => ({
@@ -84,3 +89,4 @@ module.exports = (file, options) => {
 };
 
 
+module.exports = { getLinksFromMarkdownContent, convertToAbsolutePath, validateLink };
