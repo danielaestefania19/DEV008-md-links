@@ -22,7 +22,7 @@ function getLinksFromMarkdownContent(markdownContent) {
 // Funcion para convertir la ruta relativa a absoluta 
 function convertToAbsolutePath(file) {
   if (!path.isAbsolute(file)) {
-    return path.resolve(process.cwd(), file);
+    return path.resolve(file);
   }
   return file;
 }
@@ -95,3 +95,4 @@ module.exports = {
   convertToAbsolutePath,
   validateLink, 
 };
+

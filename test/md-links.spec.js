@@ -2,8 +2,8 @@ const fs = require('fs');
 const path = require('path');
 const axios = require('axios');
 const { mdlink, getLinksFromMarkdownContent, convertToAbsolutePath,validateLink } = require('../mdlink');
-jest.mock('fs');
-jest.mock('path');
+// jest.mock('fs');
+// jest.mock('path');
 jest.mock('axios');
 
 
@@ -14,14 +14,14 @@ describe('mdlink function', () => {
   });
   test('should reject with an error when provided file has invalid extension', () => {
     const invalidFilePath = 'test.txt';
-    path.extname.mockReturnValue('.txt');
+    // path.extname.mockReturnValue('.txt');
     return expect(mdlink(invalidFilePath)).rejects.toThrow('El archivo proporcionado no tiene extensión .md');
   });
   test('should reject with an error when provided file does not exist', () => {
     const nonExistentFilePath = 'nonexistent.md';
-    path.extname.mockReturnValue('.md');
-    path.resolve.mockReturnValue(nonExistentFilePath);
-    fs.existsSync.mockReturnValue(false);
+    // path.extname.mockReturnValue('.md');
+    // path.resolve.mockReturnValue(nonExistentFilePath);
+    // fs.existsSync.mockReturnValue(false);
     return expect(mdlink(nonExistentFilePath)).rejects.toThrow('El archivo proporcionado no existe.');
   });
 });
@@ -48,14 +48,17 @@ describe('getLinksFromMarkdownContent', () => {
 describe('convertToAbsolutePath', () => {
   test('should convert relative path to absolute path', () => {
     const relativePath = 'test/files/leer.md';
-    const expectedAbsolutePath = path.resolve(process.cwd(), relativePath);
+    const expectedAbsolutePath = path.resolve(relativePath);
     const absolutePath = convertToAbsolutePath(relativePath);
+    console.log( absolutePath, expectedAbsolutePath);
     expect(absolutePath).toEqual(expectedAbsolutePath);
   });
   test('should keep absolute path unchanged', () => {
-    const absolutePath = 'C:Users/danie/OneDrive/Escritorio/Laboratoria/DEV008-md-links/test/files/leer.md';
-    const result = convertToAbsolutePath(absolutePath);
-    expect(result).toEqual(absolutePath);
+    const relativePath = 'test/files/leer.md';
+    const expectedAbsolutePath = path.resolve(relativePath);
+    // const absolutePath = 'C:Users\\danie\\OneDrive\\Escritorio\\Laboratoria\\DEV008-md-links\\test\\files\\leer.md';
+    const result = convertToAbsolutePath(expectedAbsolutePath);
+    expect(result).toEqual(expectedAbsolutePath);
   });
 });
 
