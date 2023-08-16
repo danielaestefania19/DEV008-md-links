@@ -1,4 +1,4 @@
-const mdLinks = require('./mdlink');
+const { mdlink } = require('./mdlink');
 
 const [,, filePath, validateOption] = process.argv;
 
@@ -9,7 +9,7 @@ const options = {
 if (!filePath) {
   console.error('Debes proporcionar la ruta del archivo Markdown como argumento.');
 } else {
-  mdLinks(filePath, options)
+  mdlink(filePath, options)
     .then((links) => {
       console.log('Enlaces encontrados:', links);
     })

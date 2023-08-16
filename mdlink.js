@@ -42,7 +42,7 @@ function validateLink(link) {
     }));
 }
 
-module.exports = (file, options) => {
+  function mdlink (file, options) {
   return new Promise((resolve, reject) => {
     try {
       // Verificar si el archivo es de tipo .md
@@ -89,4 +89,9 @@ module.exports = (file, options) => {
 };
 
 
-module.exports = { getLinksFromMarkdownContent, convertToAbsolutePath, validateLink };
+module.exports = { 
+  mdlink,
+  getLinksFromMarkdownContent, 
+  convertToAbsolutePath,
+  validateLink, 
+};
