@@ -2,24 +2,20 @@ const fs = require('fs');
 const path = require('path');
 const axios = require('axios');
 
-
 //Funcion para obtener los links en un array
 function getLinksFromMarkdownContent(markdownContent) {
   // Expresión regular para encontrar los enlaces en el contenido del archivo Markdown
   const linkRegex = /\[([^\]]+)\]\((https?:\/\/[^\)]+)\)/g;
   const links = [];
-
   let match;
   while ((match = linkRegex.exec(markdownContent))) {
     const [, text, url] = match;
     links.push({ href: url, text });
   }
-
   return links;
 }
 
-
-// Funcion para convertir la ruta relativa a absoluta 
+// Funcion para convertir la ruta relativa a absoluta
 function convertToAbsolutePath(file) {
   if (!path.isAbsolute(file)) {
     return path.resolve(file);
@@ -29,7 +25,8 @@ function convertToAbsolutePath(file) {
 
 //Función valida un enlace al realizar una solicitud HTTP
 function validateLink(link) {
-  return axios.get(link.href)
+  return axios
+    .get(link.href)
     .then((response) => ({
       ...link,
       status: response.status,
@@ -42,18 +39,16 @@ function validateLink(link) {
     }));
 }
 
-  function mdlink (file, options) {
+function mdlink(file, options) {
   return new Promise((resolve, reject) => {
     try {
-      // Verificar si el archivo es de tipo .md
+       // Verificar si el archivo es de tipo .md
       if (path.extname(file) !== '.md') {
         throw new Error('El archivo proporcionado no tiene extensión .md');
       }
-
       // Convertir la ruta relativa a absoluta antes de analizar el archivo
       const absoluteFilePath = convertToAbsolutePath(file);
       console.log('Ruta absoluta:', absoluteFilePath);
-
       // Verificar si el archivo existe
       if (!fs.existsSync(absoluteFilePath)) {
         throw new Error('El archivo proporcionado no existe.');
@@ -61,38 +56,57 @@ function validateLink(link) {
 
       // Leer el contenido del archivo Markdown
       const markdownContent = fs.readFileSync(absoluteFilePath, 'utf8');
-
       // Extraer los enlaces del contenido del archivo Markdown
-      let links = getLinksFromMarkdownContent(markdownContent);
-
-      if (options && options.validate) {
+      const links = getLinksFromMarkdownContent(markdownContent);
+      if (options.validate) {
         // Realizar validación para cada enlace
-        const linkPromises = links.map((link) => validateLink(link).then((validatedLink) => ({
-          ...validatedLink,
-          file: absoluteFilePath,
-        })));
+        const linkPromises = links.map((link) =>
+          validateLink(link).then((validatedLink) => ({
+            ...validatedLink,
+            file: absoluteFilePath,
+          }))
+        );
+
         Promise.all(linkPromises)
-          .then((validatedLinks) => resolve(validatedLinks))
+          .then((validatedLinks) => {
+            const result = {
+              total: validatedLinks.length,
+              unique: new Set(validatedLinks.map((link) => link.href)).size,
+              links: validatedLinks,
+            };
+
+            if (options.stats) {
+              result.broken = validatedLinks.filter((link) => link.ok === 'fail').length;
+            }
+
+            resolve(result);
+          })
           .catch((error) => reject(error));
       } else {
         // Agregar la ruta absoluta del archivo a cada objeto de enlace
-        links = links.map((link) => ({
-          ...link,
-          file: absoluteFilePath,
-        }));
-        resolve(links);
+        const result = {
+          total: links.length,
+          unique: new Set(links.map((link) => link.href)).size,
+          links: links.map((link) => ({
+            ...link,
+            file: absoluteFilePath,
+          })),
+        };
+
+        resolve(result);
       }
     } catch (error) {
       reject(error);
     }
   });
-};
+}
 
-
-module.exports = { 
+module.exports = {
   mdlink,
-  getLinksFromMarkdownContent, 
+  getLinksFromMarkdownContent,
   convertToAbsolutePath,
-  validateLink, 
+  validateLink,
 };
+
+
 
