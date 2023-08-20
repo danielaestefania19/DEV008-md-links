@@ -39,67 +39,105 @@ function validateLink(link) {
     }));
 }
 
+
+function processPathRecursive(targetPath, options) {
+  const stats = fs.statSync(targetPath);
+
+  if (stats.isDirectory()) {
+    // Si la ruta es un directorio, obtiene la lista de elementos en el directorio
+    const items = fs.readdirSync(targetPath);
+    const promises = [];
+
+    items.forEach(item => {
+      const itemPath = path.join(targetPath, item);
+      // Por cada elemento en el directorio, realiza un proceso recursivo
+      promises.push(processPathRecursive(itemPath, options));
+    });
+
+    // Espera a que todas las promesas de procesos recursivos se resuelvan
+    return Promise.all(promises).then(results => [].concat(...results));
+  } else if (stats.isFile() && path.extname(targetPath) === '.md') {
+    // Si es un archivo con extensión .md, llama a la función mdlink para procesarlo
+    return mdlink(targetPath, options);
+  }
+
+  // Si no es ni directorio ni archivo .md, resuelve con un array vacío
+  return Promise.resolve([]);
+}
+
+
+
 function mdlink(file, options) {
   return new Promise((resolve, reject) => {
     try {
-       // Verificar si el archivo es de tipo .md
-      if (path.extname(file) !== '.md') {
-        throw new Error('El archivo proporcionado no tiene extensión .md');
-      }
-      // Convertir la ruta relativa a absoluta antes de analizar el archivo
+      // Convierte la ruta relativa del archivo a una ruta absoluta
       const absoluteFilePath = convertToAbsolutePath(file);
       console.log('Ruta absoluta:', absoluteFilePath);
-      // Verificar si el archivo existe
-      if (!fs.existsSync(absoluteFilePath)) {
-        throw new Error('El archivo proporcionado no existe.');
-      }
 
-      // Leer el contenido del archivo Markdown
-      const markdownContent = fs.readFileSync(absoluteFilePath, 'utf8');
-      // Extraer los enlaces del contenido del archivo Markdown
-      const links = getLinksFromMarkdownContent(markdownContent);
-      if (options.validate) {
-        // Realizar validación para cada enlace
-        const linkPromises = links.map((link) =>
-          validateLink(link).then((validatedLink) => ({
-            ...validatedLink,
-            file: absoluteFilePath,
-          }))
-        );
+      // Obtiene información sobre el archivo o directorio en la ruta proporcionada
+      const stats = fs.statSync(absoluteFilePath);
 
-        Promise.all(linkPromises)
-          .then((validatedLinks) => {
-            const result = {
-              total: validatedLinks.length,
-              unique: new Set(validatedLinks.map((link) => link.href)).size,
-              links: validatedLinks,
-            };
-
-            if (options.stats) {
-              result.broken = validatedLinks.filter((link) => link.ok === 'fail').length;
-            }
-
-            resolve(result);
+      if (stats.isDirectory()) {
+        // Si es un directorio, procesa los archivos recursivamente en el directorio
+        processPathRecursive(absoluteFilePath, options)
+          .then(links => {
+            resolve(links); // Resuelve la promesa con los enlaces encontrados
           })
-          .catch((error) => reject(error));
-      } else {
-        // Agregar la ruta absoluta del archivo a cada objeto de enlace
-        const result = {
-          total: links.length,
-          unique: new Set(links.map((link) => link.href)).size,
-          links: links.map((link) => ({
-            ...link,
-            file: absoluteFilePath,
-          })),
-        };
+          .catch(error => {
+            reject(error); // Rechaza la promesa si hay un error durante el procesamiento
+          });
+      } else if (stats.isFile() && path.extname(absoluteFilePath) === '.md') {
+        // Si es un archivo con extensión .md (Markdown), lee su contenido
+        const markdownContent = fs.readFileSync(absoluteFilePath, 'utf8');
+        const links = getLinksFromMarkdownContent(markdownContent);
 
-        resolve(result);
+        if (options.validate) {
+          // Si se pasa la opción --validate, valida los enlaces haciendo solicitudes HTTP
+          const linkPromises = links.map(link =>
+            validateLink(link).then(validatedLink => ({
+              ...validatedLink,
+              file: absoluteFilePath,
+            }))
+          );
+
+          Promise.all(linkPromises)
+            .then(validatedLinks => {
+              const result = {
+                total: validatedLinks.length,
+                unique: new Set(validatedLinks.map(link => link.href)).size,
+                links: validatedLinks,
+              };
+
+              if (options.stats) {
+                result.broken = validatedLinks.filter(link => link.ok === 'fail').length;
+              }
+
+              resolve(result); // Resuelve la promesa con los enlaces validados y estadísticas
+            })
+            .catch(error => reject(error));
+        } else {
+          // Si no se pasa la opción --validate, devuelve los enlaces encontrados
+          const result = {
+            total: links.length,
+            unique: new Set(links.map(link => link.href)).size,
+            links: links.map(link => ({
+              ...link,
+              file: absoluteFilePath,
+            })),
+          };
+
+          resolve(result); // Resuelve la promesa con los enlaces y estadísticas
+        }
+      } else {
+        // Si no es ni un directorio ni un archivo .md, resuelve la promesa con un array vacío
+        resolve([]);
       }
     } catch (error) {
-      reject(error);
+      reject(error); // Rechaza la promesa si hay un error durante el procesamiento
     }
   });
 }
+
 
 module.exports = {
   mdlink,
