@@ -39,30 +39,23 @@ function validateLink(link) {
     }));
 }
 
+function getDirectoryFiles(targetPath) {
+  const items = fs.readdirSync(targetPath);
+  const rutas = [];
 
-function processPathRecursive(targetPath, options) {
-  const stats = fs.statSync(targetPath);
+  items.forEach(item => {
+    const itemPath = path.join(targetPath, item);
+    const stats = fs.statSync(itemPath);
 
-  if (stats.isDirectory()) {
-    // Si la ruta es un directorio, obtiene la lista de elementos en el directorio
-    const items = fs.readdirSync(targetPath);
-    const promises = [];
+    if (stats.isFile()) {
+      rutas.push(itemPath);
+    } else if (stats.isDirectory()) {
+      const tempRoutes = getDirectoryFiles(itemPath); // Llamada recursiva con itemPath
+      rutas.push(...tempRoutes);
+    }
+  });
 
-    items.forEach(item => {
-      const itemPath = path.join(targetPath, item);
-      // Por cada elemento en el directorio, realiza un proceso recursivo
-      promises.push(processPathRecursive(itemPath, options));
-    });
-
-    // Espera a que todas las promesas de procesos recursivos se resuelvan
-    return Promise.all(promises).then(results => [].concat(...results));
-  } else if (stats.isFile() && path.extname(targetPath) === '.md') {
-    // Si es un archivo con extensión .md, llama a la función mdlink para procesarlo
-    return mdlink(targetPath, options);
-  }
-
-  // Si no es ni directorio ni archivo .md, resuelve con un array vacío
-  return Promise.resolve([]);
+  return rutas;
 }
 
 
@@ -70,29 +63,56 @@ function processPathRecursive(targetPath, options) {
 function mdlink(file, options) {
   return new Promise((resolve, reject) => {
     try {
-      // Convierte la ruta relativa del archivo a una ruta absoluta
+      // Convierte la ruta relativa a absoluta
       const absoluteFilePath = convertToAbsolutePath(file);
-      console.log('Ruta absoluta:', absoluteFilePath);
 
-      // Obtiene información sobre el archivo o directorio en la ruta proporcionada
+      // Obtiene las estadísticas del archivo o directorio
       const stats = fs.statSync(absoluteFilePath);
 
       if (stats.isDirectory()) {
-        // Si es un directorio, procesa los archivos recursivamente en el directorio
-        processPathRecursive(absoluteFilePath, options)
-          .then(links => {
-            resolve(links); // Resuelve la promesa con los enlaces encontrados
-          })
-          .catch(error => {
-            reject(error); // Rechaza la promesa si hay un error durante el procesamiento
-          });
+        // Obtiene todas las rutas de archivos .md en el directorio
+        const directoryFiles = getDirectoryFiles(absoluteFilePath);
+        // Filtra para obtener solo los archivos .md
+        const mdDirectoryFiles = directoryFiles.filter(file => path.extname(file) === '.md');
+        // Arreglo para almacenar todos los enlaces
+        const allLinks = [];
+
+        // Recorre cada archivo .md en el directorio
+        for (let i = 0; i < mdDirectoryFiles.length; i++) {
+
+          const markdownFilePath = mdDirectoryFiles[i];
+          // Lee el contenido del archivo
+          const markdownContent = fs.readFileSync(mdDirectoryFiles[i], 'utf8');
+          // Obtiene los enlaces del contenido
+          const links = getLinksFromMarkdownContent(markdownContent);
+
+          const linksWithFilePath = links.map(link => ({
+            href: link.href,
+            text: link.text,
+            file: markdownFilePath, // Aquí asigna la ruta absoluta al archivo
+          }));
+
+          // Agrega los enlaces al arreglo general
+          allLinks.push(...linksWithFilePath);
+        }
+
+        // Construye el resultado con los enlaces recopilados
+        const result = {
+          total: allLinks.length,
+          unique: new Set(allLinks.map(link => link.href)).size,
+          links: allLinks,
+        };
+
+        // Resuelve la promesa con el resultado
+        resolve(result);
       } else if (stats.isFile() && path.extname(absoluteFilePath) === '.md') {
-        // Si es un archivo con extensión .md (Markdown), lee su contenido
+        // Lee el contenido del archivo .md
         const markdownContent = fs.readFileSync(absoluteFilePath, 'utf8');
+        // Obtiene los enlaces del contenido
         const links = getLinksFromMarkdownContent(markdownContent);
 
         if (options.validate) {
-          // Si se pasa la opción --validate, valida los enlaces haciendo solicitudes HTTP
+          // Realiza la validación de los enlaces
           const linkPromises = links.map(link =>
             validateLink(link).then(validatedLink => ({
               ...validatedLink,
@@ -100,23 +120,27 @@ function mdlink(file, options) {
             }))
           );
 
+          // Resuelve todas las promesas de validación
           Promise.all(linkPromises)
             .then(validatedLinks => {
+              // Construye el resultado con los enlaces validados
               const result = {
                 total: validatedLinks.length,
                 unique: new Set(validatedLinks.map(link => link.href)).size,
                 links: validatedLinks,
               };
 
+              // Si se solicitan estadísticas, calcula los enlaces rotos
               if (options.stats) {
                 result.broken = validatedLinks.filter(link => link.ok === 'fail').length;
               }
 
-              resolve(result); // Resuelve la promesa con los enlaces validados y estadísticas
+              // Resuelve la promesa con el resultado
+              resolve(result);
             })
             .catch(error => reject(error));
         } else {
-          // Si no se pasa la opción --validate, devuelve los enlaces encontrados
+          // Construye el resultado con los enlaces no validados
           const result = {
             total: links.length,
             unique: new Set(links.map(link => link.href)).size,
@@ -126,17 +150,20 @@ function mdlink(file, options) {
             })),
           };
 
-          resolve(result); // Resuelve la promesa con los enlaces y estadísticas
+          resolve(result);
         }
+
       } else {
-        // Si no es ni un directorio ni un archivo .md, resuelve la promesa con un array vacío
         resolve([]);
       }
+      
     } catch (error) {
-      reject(error); // Rechaza la promesa si hay un error durante el procesamiento
+      reject(error);
     }
   });
 }
+
+
 
 
 module.exports = {
@@ -144,6 +171,7 @@ module.exports = {
   getLinksFromMarkdownContent,
   convertToAbsolutePath,
   validateLink,
+  getDirectoryFiles,
 };
 
 
