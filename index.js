@@ -13,10 +13,10 @@ if (!filePath) {
 } else {
   const absoluteFilePath = path.resolve(filePath);
   const stats = fs.statSync(absoluteFilePath);
-  console.log(stats.isDirectory);
+  console.log(stats.isDirectory());
 
   if (stats.isDirectory()) {
-    console.log("index", stats.isDirectory)
+    console.log("index", stats.isDirectory());
     mdlink(filePath, parsedOptions)
       .then((result) => {
         if (parsedOptions.validate) {

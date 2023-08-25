@@ -53,11 +53,10 @@ function getDirectoryFiles(targetPath) {
     const stats = fs.statSync(itemPath);
 
     if (stats.isFile()) {
-      console.log('Estoy aqui soy isFile', stats.isFile());
       rutas.push(itemPath);
       return processItem(index + 1);
     } else if (stats.isDirectory()) {
-      console.log('Estoy aqui soy isDirectory ', stats.isDirectory);
+      console.log('Estoy aqui soy isDirectory ', stats.isDirectory());
       const tempRoutes = getDirectoryFiles(itemPath); // Llamada recursiva con itemPath
       rutas.push(...tempRoutes);
       return processItem(index + 1);
@@ -82,7 +81,7 @@ function mdlink(file, options, customFunctions = {}) {
       // Obtiene las estadísticas del archivo o directorio
       const stats = customFs.statSync(absoluteFilePath);
       //console.log('Stats:', stats);
-      //console.log('Estoy aqui soy yo', stats.isDirectory);
+      // console.log('Estoy aqui soy yo', stats.isDirectory);
       if (stats.isDirectory()) {
         const directoryFiles = getDirectoryFiles(absoluteFilePath); // Cambio: No usar Promesa aquí
         const mdDirectoryFiles = directoryFiles.filter(file => path.extname(file) === '.md');
