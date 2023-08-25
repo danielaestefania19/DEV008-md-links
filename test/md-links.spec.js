@@ -1,68 +1,125 @@
 const fs = require('fs');
 const path = require('path');
 const axios = require('axios');
-const { mdlink, getLinksFromMarkdownContent, convertToAbsolutePath, validateLink, getDirectoryFiles } = require('../mdlink');
+const { mdlink, getLinksFromMarkdownContent, convertToAbsolutePath,validateLink,getDirectoryFiles } = require('../mdlink');
 jest.mock('axios');
-jest.mock('path');
-jest.mock('fs');
+
+jest.spyOn(fs, 'statSync').mockImplementation((filePath) => {
+  if (fs.existsSync(filePath)) {
+    return {
+      isDirectory: () => fs.lstatSync(filePath).isDirectory(),
+      isFile: () => fs.lstatSync(filePath).isFile(),
+    };
+  } else {
+    throw new Error(`File not found: ${filePath}`);
+  }
+});
 
 
+jest.spyOn(path, 'extname').mockImplementation((filePath) => {
+  if (filePath.endsWith('.md')) {
+    return '.md';
+  } else if (filePath.endsWith('.txt')) {
+    return '.txt';
+  } else {
+    return '';
+  }
+});
+
+ 
 describe('mdlink function', () => {
-  beforeEach(() => {
-    // Mockear la respuesta de fs.statSync para devolver un directorio
-    fs.statSync.mockReturnValue({ isDirectory: jest.fn().mockReturnValue(true) });
+  it('should process a single markdown file without validation', (done) => {
+    const filePath = 'test\files\leer.md'; // Update the path accordingly
+    const options = { validate: false };
 
-    // Mockear fs.readFileSync para devolver el contenido del markdown
-    fs.readFileSync.mockReturnValue('Your markdown content here');
+    const customFunctions = {
+      fs: {
+        statSync: () => ({ isFile: () => true, isDirectory: () => false }), // Mock for file
+      },
+      path: path,
+    };
 
-    // Espiar en getLinksFromMarkdownContent para devolver un enlace
-    const markdownContent = 'https://curriculum.laboratoria.la/es/topics/javascript/04-arrays'
-    jest.spyOn(getLinksFromMarkdownContent, markdownContent).mockReturnValue([
-      { href: 'https://curriculum.laboratoria.la/es/topics/javascript/04-arrays', text: 'Arreglos' },
-    ]);
-
-    // Mockear axios.get para devolver una respuesta exitosa
-    axios.get.mockResolvedValue({ status: 200 });
+    mdlink(filePath, options, customFunctions).then(result => {
+      expect(result.total).toBe(0); // Adjust expected values
+      expect(result.unique).toBe(0); // Adjust expected values
+      done();
+    }).catch(error => {
+      done(error);
+    });
   });
 
-  afterEach(() => {
-    jest.clearAllMocks();
+  it('should process a single markdown file with validation', (done) => {
+    const filePath = path.join('test\files\leer.md'); // Update the path accordingly
+    const options = { validate: true };
+
+    const mockValidatedLink = {
+      href: 'https://example.com',
+      text: 'Example',
+      status: 200,
+      ok: 'ok',
+    };
+    const mockValidateLink = jest.fn(() => Promise.resolve(mockValidatedLink));
+
+    mdlink(filePath, options, { validateLink: mockValidateLink }).then(result => {
+      expect(result.total).toBe(0); // Adjust expected values
+      expect(result.unique).toBe(0); // Adjust expected values
+      expect(result.links[0].status).toBe(200); // Adjust expected values
+      done();
+    }).catch(error => {
+      done(error);
+    });
   });
 
-  it('should process markdown files in a directory', () => {
-    // Mockear la respuesta de path.isAbsolute y path.resolve
-    path.isAbsolute.mockReturnValue(true);
-    path.resolve.mockReturnValue('C:/Users/danie/OneDrive/Escritorio/Laboratoria/DEV008-md-links/test/files');
+  it('should process a single markdown file with validation and handle link validation errors', (done) => {
+    const filePath = path.join(__dirname, 'files', 'leer.md');
+    const options = { validate: true };
 
+    const mockInvalidLink = {
+      href: 'https://invalid-link.com',
+      text: 'Invalid Link',
+    };
+    const mockValidateLink = jest.fn(() => Promise.reject(new Error('Validation Error')));
 
-    // Mockear la respuesta de fs.readdirSync
-    const mockDirectoryFiles = [
-      'C:/Users/danie/OneDrive/Escritorio/Laboratoria/DEV008-md-links/test/files/leer.md',
-      'C:/Users/danie/OneDrive/Escritorio/Laboratoria/DEV008-md-links/test/files/leer2.md'
-    ];
-    fs.readdirSync.mockReturnValue(mockDirectoryFiles);
-
-    // Mockear la respuesta de path.extname
-    path.extname.mockReturnValue('.md');
-
-    // Llamada a la función mdlink
-    const result = mdlink('C:/Users/danie/OneDrive/Escritorio/Laboratoria/DEV008-md-links/test/files', {});
-
-    // Comprobar los resultados esperados
-    expect(result.total).toBe(2);
-    expect(result.unique).toBe(1);
-    expect(result.links).toEqual([
-      { href: 'https://curriculum.laboratoria.la/es/topics/javascript/04-arrays', text: 'Arreglos', file: 'C:/Users/danie/OneDrive/Escritorio/Laboratoria/DEV008-md-links/test/files/leer.md' },
-      { href: 'https://curriculum.laboratoria.la/es/topics/javascript', text: 'Arreglos2', file: 'C:/Users/danie/OneDrive/Escritorio/Laboratoria/DEV008-md-links/test/files/leer2.md' },
-    ]);
-
-    // Verificar llamadas a funciones espiadas
-    expect(fs.readFileSync).toHaveBeenCalledTimes(2);
-    expect(getLinksFromMarkdownContent.getLinksFromMarkdownContent).toHaveBeenCalledTimes(2);
+    mdlink(filePath, options, { validateLink: mockValidateLink })
+      .then(result => {
+        expect(result.total).toBe(3);
+        expect(result.links[0].ok).toBe('fail');
+        done();
+      })
+      .catch(error => {
+        done(error);
+      });
   });
 
-  // Otras pruebas...
+  it('should handle processing a non-markdown file', (done) => {
+    const filePath = path.join(__dirname, 'files', 'contenido.txt');
+    const options = { validate: false };
 
+    mdlink(filePath, options)
+      .then(result => {
+        expect(result.total).toBe(0);
+        done();
+      })
+      .catch(error => {
+        done(error);
+      });
+  });
+
+  it('should handle processing a non-existent file', (done) => {
+    const filePath = path.join(__dirname, 'files', 'non-existent.md');
+    const options = { validate: false };
+
+    mdlink(filePath, options)
+      .then(result => {
+        expect(result.total).toBe(0);
+        done();
+      })
+      .catch(error => {
+        done(error);
+      });
+  });
+
+  // Add more tests as needed
 });
 
 
@@ -83,8 +140,6 @@ describe('getLinksFromMarkdownContent', () => {
     expect(links).toEqual([]);
   });
 });
-
-
 describe('convertToAbsolutePath', () => {
   test('should convert relative path to absolute path', () => {
     const relativePath = 'test/files/leer.md';
@@ -127,6 +182,7 @@ describe('validateLink', () => {
 });
 
 
+jest.mock('fs');
 
 describe('getDirectoryFiles', () => {
   const mockReaddirSync = jest.fn();
@@ -150,18 +206,16 @@ describe('getDirectoryFiles', () => {
 
   it('should return an array of file paths', () => {
     // Configura los mocks para simular la estructura de archivos y directorios
+    mockReaddirSync.mockReturnValueOnce(['file1.txt', 'subdirectory']);
+    mockStatSync
+      .mockReturnValueOnce({ isFile: () => true })
+      .mockReturnValueOnce({ isDirectory: () => true });
+
+    // Define las respuestas de los mocks para los subdirectorios
     mockReaddirSync
-      .mockReturnValueOnce(['file1.txt', 'subdirectory'])
       .mockReturnValueOnce(['file2.txt'])
       .mockReturnValueOnce([]);
 
-    // Mockear la respuesta de fs.statSync
-    mockStatSync
-      .mockReturnValueOnce({ isFile: jest.fn().mockReturnValue(true) })
-      .mockReturnValueOnce({ isDirectory: jest.fn().mockReturnValue(true) })
-      .mockReturnValueOnce({ isFile: jest.fn().mockReturnValue(true) });
-
-    // Llamada a la función getDirectoryFiles
     const result = getDirectoryFiles('/path/to/directory');
 
     // Ajusta esto según las rutas reales esperadas
