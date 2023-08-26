@@ -39,86 +39,97 @@ function validateLink(link) {
     }));
 }
 
+
 function getDirectoryFiles(targetPath) {
+  console.log(targetPath);
   const items = fs.readdirSync(targetPath);
+  console.log(items);
   const rutas = [];
 
-  const processItem = (index) => {
-    if (index >= items.length) {
-      return rutas;
-    }
-
-    const item = items[index];
+  items.forEach(item => {
     const itemPath = path.join(targetPath, item);
     const stats = fs.statSync(itemPath);
 
     if (stats.isFile()) {
       rutas.push(itemPath);
-      return processItem(index + 1);
     } else if (stats.isDirectory()) {
-      console.log('Estoy aqui soy isDirectory ', stats.isDirectory());
       const tempRoutes = getDirectoryFiles(itemPath); // Llamada recursiva con itemPath
       rutas.push(...tempRoutes);
-      return processItem(index + 1);
     }
-  };
+  });
 
-  processItem(0);
   return rutas;
 }
 
 
-
-function mdlink(file, options, customFunctions = {}) {
-  const { fs: customFs = fs, path: customPath = path } = customFunctions;
-  
+function mdlink(file, options) {
   return new Promise((resolve, reject) => {
     try {
       // Convierte la ruta relativa a absoluta
       const absoluteFilePath = convertToAbsolutePath(file);
-      //console.log('Absolute File Path:', absoluteFilePath);
-            
+
       // Obtiene las estadísticas del archivo o directorio
-      const stats = customFs.statSync(absoluteFilePath);
-      //console.log('Stats:', stats);
-      // console.log('Estoy aqui soy yo', stats.isDirectory);
+      const stats = fs.statSync(absoluteFilePath);
+
       if (stats.isDirectory()) {
-        const directoryFiles = getDirectoryFiles(absoluteFilePath); // Cambio: No usar Promesa aquí
+        // Obtiene todas las rutas de archivos .md en el directorio
+        const directoryFiles = getDirectoryFiles(absoluteFilePath);
+        // Filtra para obtener solo los archivos .md
         const mdDirectoryFiles = directoryFiles.filter(file => path.extname(file) === '.md');
+        // Arreglo para almacenar todos los enlaces
         const allLinks = [];
 
-        const processFile = (index) => {
-          if (index >= mdDirectoryFiles.length) {
-            const result = {
-              total: allLinks.length,
-              unique: new Set(allLinks.map(link => link.href)).size,
-              links: allLinks,
-            };
+        // Recorre cada archivo .md en el directorio
+        for (let i = 0; i < mdDirectoryFiles.length; i++) {
 
-            if (options.stats) {
-              // Calcular los enlaces rotos
-              result.broken = allLinks.filter(link => link.ok === 'fail').length;
-            }
-            resolve(result);
-            return;
+          const markdownFilePath = mdDirectoryFiles[i];
+          // Lee el contenido del archivo
+          const markdownContent = fs.readFileSync(mdDirectoryFiles[i], 'utf8');
+          // Obtiene los enlaces del contenido
+          const links = getLinksFromMarkdownContent(markdownContent);
+
+          // Realiza la validación de los enlaces si se solicita
+          if (options.validate) {
+            links.forEach(link => {
+              validateLink(link)
+                .then(validatedLink => {
+                  if (validatedLink.ok === 'fail') {
+                    brokenLinks.push({
+                      ...validatedLink,
+                      file: markdownFilePath,
+                    });
+                  }
+                })
+                .catch(error => reject(error));
+            });
           }
 
-          const markdownFilePath = mdDirectoryFiles[index];
-          const markdownContent = fs.readFileSync(markdownFilePath, 'utf8');
-          const links = getLinksFromMarkdownContent(markdownContent);
 
           const linksWithFilePath = links.map(link => ({
             href: link.href,
             text: link.text,
-            file: markdownFilePath,
+            file: markdownFilePath, // Aquí asigna la ruta absoluta al archivo
           }));
 
+          // Agrega los enlaces al arreglo general
           allLinks.push(...linksWithFilePath);
+        }
 
-          processFile(index + 1);
+        // Construye el resultado con los enlaces recopilados
+        const result = {
+          total: allLinks.length,
+          unique: new Set(allLinks.map(link => link.href)).size,
+          links: allLinks,
         };
 
-        processFile(0);
+        let brokenLinks = []; 
+
+        if (options.stats && options.validate) {
+          result.broken = brokenLinks.length;
+        }
+
+        // Resuelve la promesa con el resultado
+        resolve(result);
       } else if (stats.isFile() && path.extname(absoluteFilePath) === '.md') {
         // Lee el contenido del archivo .md
         const markdownContent = fs.readFileSync(absoluteFilePath, 'utf8');
@@ -146,10 +157,7 @@ function mdlink(file, options, customFunctions = {}) {
 
               // Si se solicitan estadísticas, calcula los enlaces rotos
               if (options.stats) {
-                // Calcula los enlaces rotos independientemente de options.stats
-                
                 result.broken = validatedLinks.filter(link => link.ok === 'fail').length;
-
               }
 
               // Resuelve la promesa con el resultado
@@ -179,6 +187,8 @@ function mdlink(file, options, customFunctions = {}) {
     }
   });
 }
+
+
 
 
 
