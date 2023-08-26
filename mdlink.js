@@ -41,9 +41,7 @@ function validateLink(link) {
 
 
 function getDirectoryFiles(targetPath) {
-  console.log(targetPath);
   const items = fs.readdirSync(targetPath);
-  console.log(items);
   const rutas = [];
 
   items.forEach(item => {
@@ -61,7 +59,6 @@ function getDirectoryFiles(targetPath) {
   return rutas;
 }
 
-
 function mdlink(file, options) {
   return new Promise((resolve, reject) => {
     try {
@@ -78,58 +75,51 @@ function mdlink(file, options) {
         const mdDirectoryFiles = directoryFiles.filter(file => path.extname(file) === '.md');
         // Arreglo para almacenar todos los enlaces
         const allLinks = [];
+        let brokenLinks = []; // Para almacenar los enlaces rotos
+
+        let processedCount = 0; // Contador para rastrear cuántos archivos se han procesado
+
 
         // Recorre cada archivo .md en el directorio
         for (let i = 0; i < mdDirectoryFiles.length; i++) {
-
           const markdownFilePath = mdDirectoryFiles[i];
-          // Lee el contenido del archivo
-          const markdownContent = fs.readFileSync(mdDirectoryFiles[i], 'utf8');
-          // Obtiene los enlaces del contenido
-          const links = getLinksFromMarkdownContent(markdownContent);
+          mdlink(markdownFilePath, options)
+            .then(result => {
+              if (options.validate) {
+                brokenLinks = brokenLinks.concat(result.brokenLinks);
+              }
+              allLinks.push(...result.links);
 
-          // Realiza la validación de los enlaces si se solicita
-          if (options.validate) {
-            links.forEach(link => {
-              validateLink(link)
-                .then(validatedLink => {
-                  if (validatedLink.ok === 'fail') {
-                    brokenLinks.push({
-                      ...validatedLink,
-                      file: markdownFilePath,
-                    });
-                  }
-                })
-                .catch(error => reject(error));
+              processedCount++; // Incrementa el contador de archivos procesados
+
+              if (processedCount === mdDirectoryFiles.length) {
+                // Cuando se hayan procesado todos los archivos, resuelve la promesa
+                resolve({
+                  total: allLinks.length,
+                  unique: new Set(allLinks.map(link => link.href)).size,
+                  links: allLinks,
+                  broken: brokenLinks.length,
+                  brokenLinks: brokenLinks,
+                });
+              }
+            })
+            .catch(error => {
+              console.error(`Error analyzing ${markdownFilePath}:`, error.message);
+
+              processedCount++; // Incrementa el contador de archivos procesados
+
+              if (processedCount === mdDirectoryFiles.length) {
+                // Cuando se hayan procesado todos los archivos, resuelve la promesa
+                resolve({
+                  total: allLinks.length,
+                  unique: new Set(allLinks.map(link => link.href)).size,
+                  links: allLinks,
+                  broken: brokenLinks.length,
+                  brokenLinks: brokenLinks,
+                });
+              }
             });
-          }
-
-
-          const linksWithFilePath = links.map(link => ({
-            href: link.href,
-            text: link.text,
-            file: markdownFilePath, // Aquí asigna la ruta absoluta al archivo
-          }));
-
-          // Agrega los enlaces al arreglo general
-          allLinks.push(...linksWithFilePath);
         }
-
-        // Construye el resultado con los enlaces recopilados
-        const result = {
-          total: allLinks.length,
-          unique: new Set(allLinks.map(link => link.href)).size,
-          links: allLinks,
-        };
-
-        let brokenLinks = []; 
-
-        if (options.stats && options.validate) {
-          result.broken = brokenLinks.length;
-        }
-
-        // Resuelve la promesa con el resultado
-        resolve(result);
       } else if (stats.isFile() && path.extname(absoluteFilePath) === '.md') {
         // Lee el contenido del archivo .md
         const markdownContent = fs.readFileSync(absoluteFilePath, 'utf8');

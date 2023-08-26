@@ -13,15 +13,15 @@ if (!filePath) {
 } else {
   const absoluteFilePath = path.resolve(filePath);
   const stats = fs.statSync(absoluteFilePath);
-  console.log(stats.isDirectory());
 
   if (stats.isDirectory()) {
-    console.log("index", stats.isDirectory());
+    const visitedLinks = new Set(); // Usaremos un conjunto para evitar repeticiones
+
     mdlink(filePath, parsedOptions)
       .then((result) => {
         if (parsedOptions.validate) {
           result.links.forEach((link) => {
-            console.log(link);
+            visitedLinks.add(link.href); // Agregar el enlace al conjunto
           });
         } else {
           const simplifiedLinks = result.links.map((link) => ({
@@ -36,10 +36,30 @@ if (!filePath) {
         console.error('Error:', error.message);
       });
 
-    if (parsedOptions.validate) {
-      const directoryFiles = getDirectoryFiles(absoluteFilePath);
-      console.log('Archivos en la carpeta:', directoryFiles);
-    }
+      if (parsedOptions.validate) {
+        const directoryFiles = getDirectoryFiles(absoluteFilePath);
+        if (directoryFiles) { // Verificar si directoryFiles está definido
+          const linkPromises = directoryFiles.map((file) =>
+            mdlink(file, parsedOptions)
+          );
+      
+          Promise.all(linkPromises)
+            .then((results) => {
+              const visitedLinks = new Set(); // Conjunto para evitar duplicación
+              results.forEach((result) => {
+                result.links.forEach((link) => {
+                  if (!visitedLinks.has(link.href) && link.ok === 'ok') {
+                    console.log(link);
+                    visitedLinks.add(link.href); // Agregar el enlace al conjunto
+                  }
+                });
+              });
+            })
+            .catch((error) => {
+              console.error('Error:', error.message);
+            });
+        }
+      }
   } else {
     mdlink(filePath, parsedOptions)
       .then((result) => {
