@@ -41,12 +41,16 @@ function validateLink(link) {
 
 
 function getDirectoryFiles(targetPath) {
+  console.log("Prueba",targetPath);
   const items = fs.readdirSync(targetPath);
+  console.log("Items",items);
   const rutas = [];
 
   items.forEach(item => {
     const itemPath = path.join(targetPath, item);
     const stats = fs.statSync(itemPath);
+    console.log("itemPath",itemPath);
+    console.log("stats",stats);
 
     if (stats.isFile()) {
       rutas.push(itemPath);
@@ -178,11 +182,6 @@ function mdlink(file, options) {
   });
 }
 
-
-
-
-
-
 module.exports = {
   mdlink,
   getLinksFromMarkdownContent,
@@ -190,6 +189,3 @@ module.exports = {
   validateLink,
   getDirectoryFiles,
 };
-
-
-
