@@ -14,22 +14,25 @@ describe('getDirectoryFiles', () => {
       expect(result).toEqual([]);
     });
 
-  it('debería retornar un array de rutas de archivos en un directorio', () => {
-    //const testDir = path.resolve(__dirname, 'test', 'files')
-    //console.log('testDir',testDir);
-    const testDir = 'C:\\DEV008-md-links\\test\\files'; // O path.resolve(__dirname, 'test', 'files')
-    console.log('testDir1', testDir);
-    const expectedFilePaths = [
-      'C:\\DEV008-md-links\\test\\files\\leer.md',
-      'C:\\DEV008-md-links\\test\\files\\leer2.md',
-      'C:\\DEV008-md-links\\test\\files\\vacio.md',
-      'C:\\DEV008-md-links\\test\\files\\broken-link.md',
-    ];
-    const result = getDirectoryFiles(testDir);
-    console.log('result', result);
-    console.log('expectedFilePaths', expectedFilePaths);
-    expect(result).toEqual(expectedFilePaths);
-  });
+    it('debería retornar un array de rutas de archivos en un directorio', () => {
+        const testDir = path.join(__dirname, 'files'); // Ruta completa del directorio de pruebas
+        console.log('testDirP1: ',testDir);
+        const expectedFilePaths = [
+          'leer.md',
+          'leer2.md',
+          'vacio.md',
+          'broken-link.md',
+        ].map((filePath) => path.normalize(filePath)); // Normaliza las rutas para manejar diferencias de formato
+        const result = getDirectoryFiles(testDir);
+        // Normaliza las rutas absolutas en result a rutas relativas
+        const resultRelative = result.map((filePath) => path.relative(testDir, filePath));
+        // Ordena ambas matrices de rutas antes de compararlas
+        resultRelative.sort();
+        expectedFilePaths.sort();
+        console.log('resultRelativeP1: ',resultRelative);
+        console.log('expectedFilePathsP1: ',expectedFilePaths);
+        expect(resultRelative).toEqual(expectedFilePaths);
+      });
 
   it('debería retornar un array vacío si se le pasa una ruta que no existe', () => {
     const nonExistentPath = path.join(__dirname, 'test', 'no-existe'); // Cambia la ruta según sea necesario

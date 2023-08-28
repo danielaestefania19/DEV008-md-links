@@ -71,7 +71,7 @@ function validateLink(link) {
 //   return rutas; // Devuelve las rutas actualizadas en cada nivel de recursión
 // }
 
-function getDirectoryFiles(targetPath , basePath = '') {
+function getDirectoryFiles(targetPath) {
   try {
     const items = fs.readdirSync(targetPath);
     if (!Array.isArray(items)) {
@@ -85,12 +85,13 @@ function getDirectoryFiles(targetPath , basePath = '') {
       const stats = fs.statSync(itemPath);
 
       if (stats.isFile()) {
-        rutas.push(path.join(basePath, item));
+        rutas.push(itemPath);
       } else if (stats.isDirectory()) {
-        const tempRoutes = getDirectoryFiles(itemPath, path.join(basePath, item)); // Llamada recursiva con itemPath
+        const tempRoutes = getDirectoryFiles(itemPath); // Llamada recursiva con itemPath
         rutas = [...rutas, ...tempRoutes]; // Concatena las rutas devueltas por la llamada recursiva
       }
     });
+    // Normaliza las rutas para manejar diferencias de formato
     return rutas; // Devuelve las rutas actualizadas en cada nivel de recursión
   } catch (error) {
     // Maneja el error ENOENT retornando un array vacío
