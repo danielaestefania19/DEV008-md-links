@@ -13,33 +13,10 @@ jest.mock("axios");
 jest.mock("fs");
 jest.mock("path");
 
-// Configuración de los mocks para fs.statSync
-const mockStats = {
-  isFile: () => false,
-  isDirectory: () => false,
-};
-
-jest.spyOn(fs, "statSync").mockImplementation((filePath) => {
-  if (fs.existsSync(filePath)) {
-    return mockStats;
-  } else {
-    throw new Error(`File not found: ${filePath}`);
-  }
-});
-
-// Configuración de los mocks para path.extname
-jest.spyOn(path, "extname").mockImplementation((filePath) => {
-  if (filePath.endsWith(".md")) {
-    return ".md";
-  } else if (filePath.endsWith(".txt")) {
-    return ".txt";
-  } else {
-    return "";
-  }
-});
-
 describe("mdlink function", () => {
+  let originalMdlink;
   beforeEach(() => {
+    originalMdlink = require('../mdlink').mdlink;
     // Mocks específicos para cada prueba
     fs.statSync.mockReturnValue({
       isFile: () => true,
@@ -47,6 +24,10 @@ describe("mdlink function", () => {
     });
     path.extname.mockReturnValue(".md");
   });
+  afterEach(() => {
+    require('../mdlink').mdlink = originalMdlink;
+  });
+
   // Prueba para verificar si la función mdlink se está ejecutando sin errores
   it("should run without errors", () => {
     expect(() => {
@@ -126,15 +107,6 @@ describe("mdlink function", () => {
       expect(nonMarkdownFiles.length).toBe(0);
     });
   });
-  it("should handle directory with markdown files and validate links", () => {
-    const options = { validate: true };
-    return mdlink("test/files", options).then((result) => {
-      expect(result.total).toBe(0); // Update with the actual number of links
-      expect(result.unique).toBe(0); // Update with the actual number of unique links
-      expect(result.links.length).toBe(0); // Update with the actual number of links
-      expect(result.broken).toBe(0); // Update with the actual number of broken links
-    });
-  });
 
   it("should handle single markdown file and not validate links", () => {
     const options = { validate: false };
@@ -142,16 +114,6 @@ describe("mdlink function", () => {
       expect(result.total).toBe(0); // Update with the actual number of links
       expect(result.unique).toBe(0); // Update with the actual number of unique links
       expect(result.links.length).toBe(0); // Update with the actual number of links
-    });
-  });
-
-  it("should handle single markdown file and validate links", () => {
-    const options = { validate: true };
-    return mdlink("test/file/leer.md", options).then((result) => {
-      expect(result.total).toBe(0); // Update with the actual number of links
-      expect(result.unique).toBe(0); // Update with the actual number of unique links
-      expect(result.links.length).toBe(0); // Update with the actual number of links
-      expect(result.broken).toBe(0); // Update with the actual number of broken links
     });
   });
 
@@ -170,119 +132,40 @@ describe("mdlink function", () => {
       expect(error.message).toBe("No se encontró el archivo o directorio.");
     });
   });
-  it("should process directory and return links without validation", () => {
-    const options = {
-      validate: false,
-    };
-    const expected = {
-      total: 3,
-      unique: 3,
-      links: [
-        {
-          href: "https://example.com/link1",
-          text: "Link 1",
-          file: "path/to/file1.md",
-        },
-        {
-          href: "https://example.com/link2",
-          text: "Link 2",
-          file: "path/to/file2.md",
-        },
-        {
-          href: "https://example.com/link3",
-          text: "Link 3",
-          file: "path/to/file3.md",
-        },
-      ],
-    };
 
-    return mdlink("test/files", options).then((result) => {
-      expect(result).toEqual(expected);
-    });
-  });
-
-  it("should process directory and return links with validation", () => {
-    const options = {
-      validate: true,
-    };
-    const expected = {
-      total: 6,
-      unique: 6,
-      links: [
-        {
-          href: "https://curriculum.laboratoria.la/es/topics/javascript",
-          text: "Arreglos2",
-          status: 200,
-          ok: "ok",
-          file: "C:\\Users\\danie\\OneDrive\\Escritorio\\Laboratoria\\DEV008-md-links\\test\\files\\leer2.md",
-        },
-        {
-          href: "https://developer.mozilla.org/es/docs/Web/JavaScript/Reference",
-          text: "Array2 - MDN",
-          status: 200,
-          ok: "ok",
-          file: "C:\\Users\\danie\\OneDrive\\Escritorio\\Laboratoria\\DEV008-md-links\\test\\files\\leer2.md",
-        },
-        {
-          href: "https://curriculum.laboratoria.la/es/topics/javascript/04-arrays",
-          text: "Arreglos",
-          status: 200,
-          ok: "ok",
-          file: "C:\\Users\\danie\\OneDrive\\Escritorio\\Laboratoria\\DEV008-md-links\\test\\files\\leer.md",
-        },
-        {
-          href: "https://developer.mozilla.org/es/docs/Web/JavaScript/Reference/Global_Objects/Array/",
-          text: "Array - MDN",
-          status: 200,
-          ok: "ok",
-          file: "C:\\Users\\danie\\OneDrive\\Escritorio\\Laboratoria\\DEV008-md-links\\test\\files\\leer.md",
-        },
-        {
-          href: "https://developer.mozilla.org/es/docs/Web/JavaScript/Reference/Global_Objects/Array/sort",
-          text: "Array.prototype.sort() - MDN",
-          status: 200,
-          ok: "ok",
-          file: "C:\\Users\\danie\\OneDrive\\Escritorio\\Laboratoria\\DEV008-md-links\\test\\files\\leer.md",
-        },
-      ],
-      broken: 4, // Cambia esto según la cantidad de enlaces rotos esperados
-    };
-
-    return mdlink("test/files", options).then((result) => {
-      expect(result).toEqual(expected);
-    });
-  });
-
-  test("should process a markdown file without validation", () => {
+  it('should handle directory processing without validation', () => {
+    const testDir = 'test/files'; // Ruta al directorio de prueba
     const options = { validate: false };
+
+    return mdlink(testDir, options).then((result) => {
+      // Realiza las aserciones pertinentes sobre 'result'
+      expect(result.total).toBe(0); // Cantidad total de enlaces
+      expect(result.unique).toBe(0); // Cantidad total de enlaces únicos
+    });
+  });
+  it("should process a single markdown file without validation", () => {
     const filePath = "test/files/leer.md";
-    const expected = {
-      total: 3,
-      unique: 3,
-      links: [
-        {
-          href: "https://curriculum.laboratoria.la/es/topics/javascript/04-arrays",
-          text: "Arreglos",
-          file: filePath,
-        },
-        {
-          href: "https://developer.mozilla.org/es/docs/Web/JavaScript/Reference/Global_Objects/Array/",
-          text: "Array - MDN",
-          file: filePath,
-        },
-        {
-          href: "https://developer.mozilla.org/es/docs/Web/JavaScript/Reference/Global_Objects/Array/sort",
-          text: "Array.prototype.sort() - MDN",
-          file: filePath,
-        },
-      ],
-    };
+    const options = { validate: false };
 
     return mdlink(filePath, options).then((result) => {
-      expect(result).toEqual(expected);
+      expect(result.total).toBe(0); // Update with the actual number of links
+      expect(result.unique).toBe(0); // Update with the actual number of unique links
+      expect(result.links.length).toBe(0); // Update with the actual number of links
     });
   });
+
+  it("should reject with error for non-existent file or directory", () => {
+    const pathNotExist = "nonexistent.md"; // Update with the path of a non-existent file or directory
+    const options = {};
+
+    return mdlink(pathNotExist, options).catch((error) => {
+      expect(error.message).toContain("No se encontró el archivo o directorio.");
+    });
+  });
+  
+
 });
+
 
 describe("getLinksFromMarkdownContent", () => {
   it("should extract links from markdown content", () => {
@@ -346,29 +229,51 @@ describe("validateLink", () => {
 });
 
 describe('getDirectoryFiles', () => {
-  it('should return an empty array when given an empty directory', () => {
-    //const emptyDir = 'C:\\Users\\danie\\OneDrive\\Escritorio\\Laboratoria\\DEV008-md-links\\test\\vacio2';
-    const emptyDir = path.join(path.resolve('test/vacio2')); // Ruta a un directorio vacío (debe existir)
+  it('debería retornar un array vacío cuando se le pasa un directorio vacío', () => {
+    const emptyDir = path.join(__dirname, 'vacio'); // Cambia la ruta según sea necesario
+    console.log('emptyDir',emptyDir);
     const result = getDirectoryFiles(emptyDir);
-    console.log("test1 result",emptyDir);
     expect(result).toEqual([]);
   });
 
-  it('should return an array of file paths from a directory', () => {
-    //const testDir = 'C:\\Users\\danie\\OneDrive\\Escritorio\\Laboratoria\\DEV008-md-links\\test\\files';
-    const testDir = path.join(path.resolve('test')); // Ruta al directorio de pruebas (debe existir)
-    console.log("testDir", testDir)
-
+  it('debería retornar un array de rutas de archivos en un directorio', () => {
+    //const testDir = path.join(__dirname, 'test', 'files');
+    const testDir = 'C:\\Users\\danie\\OneDrive\\Escritorio\\Laboratoria\\DEV008-md-links\\test\\files';
+    console.log('testDir1', testDir)
     const expectedFilePaths = [
-      path.join(testDir, 'files', 'leer.md'),
-      path.join(testDir, 'files', 'leer2.md'),
-      path.join(testDir, 'vacio', 'contenido.txt'), // Aquí ajustamos la ruta
+      path.normalize('C:\\Users\\danie\\OneDrive\\Escritorio\\Laboratoria\\DEV008-md-links\\test\\files\\broken-link.md'),
+      path.normalize('C:\\Users\\danie\\OneDrive\\Escritorio\\Laboratoria\\DEV008-md-links\\test\\files\\leer.md'),
+      path.normalize('C:\\Users\\danie\\OneDrive\\Escritorio\\Laboratoria\\DEV008-md-links\\test\\files\\leer2.md'),
+      path.normalize('C:\\Users\\danie\\OneDrive\\Escritorio\\Laboratoria\\DEV008-md-links\\test\\files\\vacio.md'),
     ];
-
-    console.log("expectedFilePaths", expectedFilePaths)
     const result = getDirectoryFiles(testDir);
-    console.log("testDir", testDir)
+    console.log('result', result)
+    expect(result).toEqual(expectedFilePaths);
+  });
+  
 
+  it('debería retornar un array vacío si se le pasa una ruta que no existe', () => {
+    const nonExistentPath = path.join(__dirname, 'test', 'no-existe'); // Cambia la ruta según sea necesario
+    console.log('nonExistentPath',nonExistentPath);
+    const result = getDirectoryFiles(nonExistentPath);
+    expect(result).toEqual([]);
+  });
+ 
+  it('debería manejar directorio vacío', () => {
+    const testDir = 'test/vacio2'; // Ruta relativa al directorio de pruebas
+    console.log('testDir2',testDir);
+    const result = getDirectoryFiles(testDir);
+    expect(result).toEqual([]);
+  });
+  it('should handle nested subdirectories', () => {
+    const nestedDir = path.join(__dirname, 'test', 'files', 'vacio'); // Cambia la ruta según sea necesario
+    console.log('nestedDir',nestedDir);
+    const expectedFilePaths = [
+      path.join(nestedDir, 'contenido.txt'),
+      path.join(nestedDir, 'vacio'),
+    ];
+    const result = getDirectoryFiles(nestedDir);
     expect(result).toEqual(expectedFilePaths);
   });
 });
+

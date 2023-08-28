@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-const { mdlink } = require('./mdlink');
+const { mdlink} = require('./mdlink');
 const fs = require('fs');
 const path = require('path');
 
