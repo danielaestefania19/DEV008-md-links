@@ -39,27 +39,28 @@ Para la instalación de la librería se deberá ejecutar el suguiente comando:
 - Desde consola
 
 ```sh
-
+npm install @danielaestefania19/md-links@0.1.2
 ```
 - Desde package.json:
 
 ```sh
-
+"@danielaestefania19/md-links": "0.1.2"
 ```
 
 ## 4. Uso de la librería
 
 El módulo ofrece dos procesos: validar y/u obtener estadísticas de los links.
 
-#### `md-links  <path> [options]`
+#### `index  <path> [options]`
+#### `cli  <path> [options]`
 
 ##### Argumentos
 
 * `path`: Se ingresa la ruta **absoluta** o **relativa** al **archivo** o al **directorio**.
 * `options`: Solo se acepta la siguiente opción:
-  - `-vl o --validate`: Determina si se desea validar via HTTP los links encontrados.
-  - `-s o --stats`: Determina si se desea validar via HTTP los links encontrados.
-  - `-vl -s o --validate --stats`: Muestra el conteo del total, los links únicos y los links inválidos.
+  - `--validate`: Determina si se desea validar via HTTP los links encontrados.
+  - `--stats`: Determina si se desea validar via HTTP los links encontrados.
+  - `--validate --stats`: Muestra el conteo del total, los links únicos y los links inválidos.
 
 ##### Valor de retorno
 
@@ -79,12 +80,12 @@ encontrado :
 * `status`: Código de respuesta HTTP.
 * `ok`: Mensaje `fail` en caso de fallo u `ok` en caso de éxito.
 
-En caso de recibir `-s o --stats` mostrará las estadísticas en consola :
+En caso de recibir `--stats` mostrará las estadísticas en consola :
 
 * `Total`: Total de liks encontrados en la ruta.
 * `Unique`: Total de links únicos encotrados en la ruta.
 
-En caso de recibir `-vl -s o --validate --stats` mostrará las estadísticas en consola :
+En caso de recibir `--validate --stats` mostrará las estadísticas en consola :
 
 * `Total`: Total de liks encontrados en la ruta.
 * `Unique`: Total de links únicos encotrados en la ruta.
@@ -93,7 +94,7 @@ En caso de recibir `-vl -s o --validate --stats` mostrará las estadísticas en 
 ##### Ejemplos
 
 ```sh
-$ md-links ./some/example.md
+$ index ./some/example.md
 ./some/example.md http://algo.com/2/3/ Link a algo
 ./some/example.md https://otra-cosa.net/algun-doc.html algún doc
 ./some/example.md http://google.com/ Google
@@ -104,7 +105,7 @@ $ md-links ./some/example.md
 ###### `--validate`
 
 ```sh
-$ md-links ./some/example.md --validate
+$ index ./some/example.md --validate
 ./some/example.md http://algo.com/2/3/ ok 200 Link a algo
 ./some/example.md https://otra-cosa.net/algun-doc.html fail 404 algún doc
 ./some/example.md http://google.com/ ok 301 Google
@@ -113,7 +114,7 @@ $ md-links ./some/example.md --validate
 ###### `--stats`
 
 ```sh
-$ md-links ./some/example.md --stats
+$ cli ./some/example.md --stats
 Total: 3
 Unique: 3
 ```
@@ -121,7 +122,7 @@ Unique: 3
 ###### `--validate` y `--stats`
 
 ```sh
-$ md-links ./some/example.md --stats --validate
+$ cli ./some/example.md --stats --validate
 Total: 3
 Unique: 3
 Broken: 1

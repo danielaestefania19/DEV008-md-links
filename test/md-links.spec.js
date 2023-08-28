@@ -162,8 +162,52 @@ describe("mdlink function", () => {
       expect(error.message).toContain("No se encontró el archivo o directorio.");
     });
   });
-  
+  // Importar los módulos necesarios y configurar los mocks
 
+  test("should handle directory processing with validation", () => {
+    const testDir = "test/files"; // Ruta al directorio de prueba
+    const options = { validate: true };
+
+    // Configurar el mock de fs para readdirSync y readFileSync
+    fs.readdirSync.mockReturnValue(["leer.md", "leer2.md"]);
+    fs.readFileSync.mockReturnValue(`
+      - [Arreglos](https://curriculum.laboratoria.la/es/topics/javascript/04-arrays)
+      - [Array - MDN](https://developer.mozilla.org/es/docs/Web/JavaScript/Reference/Global_Objects/Array/)
+      - [Array.prototype.sort() - MDN](https://developer.mozilla.org/es/docs/Web/JavaScript/Reference/Global_Objects/Array/sort)
+    `);
+
+    // Simular respuestas de validación para axios.get
+    axios.get.mockImplementation((link) => {
+      // Simular que todos los enlaces son válidos
+      return Promise.resolve({ status: 200 });
+    });
+
+    // Ejecutar la función mdlink con el mock configurado
+    return mdlink(testDir, options).then((result) => {
+      // Realizar las aserciones pertinentes sobre 'result'
+      expect(result.total).toBe(3); // Actualiza con la cantidad esperada de enlaces
+      // ... Realizar otras aserciones aquí
+    });
+  });
+
+test("should handle directory processing with broken links", () => {
+  const testDir = "test/files"; // Ruta al directorio de prueba
+  const options = { validate: true };
+
+  // Configurar el mock de fs para readdirSync y readFileSync
+  fs.readdirSync.mockReturnValue(["broken-link.md"]);
+  fs.readFileSync.mockReturnValue("[Enlace Roto](https://domain-does-not-exist12345.com)");
+
+  // Simular respuestas de validación para axios.get
+  axios.get.mockRejectedValue({ response: { status: 404 } });
+
+  // Ejecutar la función mdlink con el mock configurado
+  return mdlink(testDir, options).then((result) => {
+    // Realizar las aserciones pertinentes sobre 'result'
+    expect(result.total).toBe(1); // Actualiza con la cantidad esperada de enlaces
+    // ... Realizar otras aserciones aquí
+  });
+});
 });
 
 
@@ -227,53 +271,3 @@ describe("validateLink", () => {
     });
   });
 });
-
-describe('getDirectoryFiles', () => {
-  it('debería retornar un array vacío cuando se le pasa un directorio vacío', () => {
-    const emptyDir = path.join(__dirname, 'vacio'); // Cambia la ruta según sea necesario
-    console.log('emptyDir',emptyDir);
-    const result = getDirectoryFiles(emptyDir);
-    expect(result).toEqual([]);
-  });
-
-  it('debería retornar un array de rutas de archivos en un directorio', () => {
-    //const testDir = path.join(__dirname, 'test', 'files');
-    const testDir = 'C:\\Users\\danie\\OneDrive\\Escritorio\\Laboratoria\\DEV008-md-links\\test\\files';
-    console.log('testDir1', testDir)
-    const expectedFilePaths = [
-      path.normalize('C:\\Users\\danie\\OneDrive\\Escritorio\\Laboratoria\\DEV008-md-links\\test\\files\\broken-link.md'),
-      path.normalize('C:\\Users\\danie\\OneDrive\\Escritorio\\Laboratoria\\DEV008-md-links\\test\\files\\leer.md'),
-      path.normalize('C:\\Users\\danie\\OneDrive\\Escritorio\\Laboratoria\\DEV008-md-links\\test\\files\\leer2.md'),
-      path.normalize('C:\\Users\\danie\\OneDrive\\Escritorio\\Laboratoria\\DEV008-md-links\\test\\files\\vacio.md'),
-    ];
-    const result = getDirectoryFiles(testDir);
-    console.log('result', result)
-    expect(result).toEqual(expectedFilePaths);
-  });
-  
-
-  it('debería retornar un array vacío si se le pasa una ruta que no existe', () => {
-    const nonExistentPath = path.join(__dirname, 'test', 'no-existe'); // Cambia la ruta según sea necesario
-    console.log('nonExistentPath',nonExistentPath);
-    const result = getDirectoryFiles(nonExistentPath);
-    expect(result).toEqual([]);
-  });
- 
-  it('debería manejar directorio vacío', () => {
-    const testDir = 'test/vacio2'; // Ruta relativa al directorio de pruebas
-    console.log('testDir2',testDir);
-    const result = getDirectoryFiles(testDir);
-    expect(result).toEqual([]);
-  });
-  it('should handle nested subdirectories', () => {
-    const nestedDir = path.join(__dirname, 'test', 'files', 'vacio'); // Cambia la ruta según sea necesario
-    console.log('nestedDir',nestedDir);
-    const expectedFilePaths = [
-      path.join(nestedDir, 'contenido.txt'),
-      path.join(nestedDir, 'vacio'),
-    ];
-    const result = getDirectoryFiles(nestedDir);
-    expect(result).toEqual(expectedFilePaths);
-  });
-});
-

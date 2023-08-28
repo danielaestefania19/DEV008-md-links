@@ -47,45 +47,60 @@ function validateLink(link) {
     });
 }
 
-/* function getDirectoryFiles(targetPath, rutas = []) {
-  const items = fs.readdirSync(targetPath);
+// function getDirectoryFiles(targetPath) {
+//   console.log('targetPath ', targetPath)
+//   const items = fs.readdirSync(targetPath);
 
-  items.forEach(item => {
-    const itemPath = path.join(targetPath, item);
-    const stats = fs.statSync(itemPath);
+//   if (!Array.isArray(items)) {
+//     return []; // Si no es un arreglo válido, regresa un arreglo vacío
+//   }
 
-    if (stats.isFile()) {
-      rutas.push(itemPath);
-    } else if (stats.isDirectory()) {
-      const tempRoutes = getDirectoryFiles(itemPath, rutas); // Llamada recursiva con itemPath
-      rutas = [...rutas, ...tempRoutes]; // Concatena las rutas devueltas por la llamada recursiva
+//   let rutas = []; // Almacena las rutas para este nivel
+
+//   items.forEach((item) => {
+//     const itemPath = path.join(targetPath, item);
+//     const stats = fs.statSync(itemPath);
+
+//     if (stats.isFile()) {
+//       rutas.push(itemPath);
+//     } else if (stats.isDirectory()) {
+//       const tempRoutes = getDirectoryFiles(itemPath); // Llamada recursiva con itemPath
+//       rutas = [...rutas, ...tempRoutes]; // Concatena las rutas devueltas por la llamada recursiva
+//     }
+//   });
+//   return rutas; // Devuelve las rutas actualizadas en cada nivel de recursión
+// }
+
+function getDirectoryFiles(targetPath , basePath = '') {
+  try {
+    const items = fs.readdirSync(targetPath);
+    if (!Array.isArray(items)) {
+      return []; // Si no es un arreglo válido, regresa un arreglo vacío
     }
-  });
-  console.log('rutas', rutas);
-  return rutas; // Devuelve las rutas actualizadas en cada nivel de recursión
-} */
 
-function getDirectoryFiles(targetPath) {
-  const items = fs.readdirSync(targetPath);
-  if (!Array.isArray(items)) {
-    return []; // Si no es un arreglo válido, regresa un arreglo vacío
+    let rutas = []; // Almacena las rutas para este nivel
+
+    items.forEach((item) => {
+      const itemPath = path.join(targetPath, item);
+      const stats = fs.statSync(itemPath);
+
+      if (stats.isFile()) {
+        rutas.push(path.join(basePath, item));
+      } else if (stats.isDirectory()) {
+        const tempRoutes = getDirectoryFiles(itemPath, path.join(basePath, item)); // Llamada recursiva con itemPath
+        rutas = [...rutas, ...tempRoutes]; // Concatena las rutas devueltas por la llamada recursiva
+      }
+    });
+    return rutas; // Devuelve las rutas actualizadas en cada nivel de recursión
+  } catch (error) {
+    // Maneja el error ENOENT retornando un array vacío
+    if (error.code === 'ENOENT') {
+      return [];
+    }
+    throw error; // Lanza otros errores para que se manejen en otro lugar
   }
-
-  let rutas = []; // Almacena las rutas para este nivel
-
-  items.forEach((item) => {
-    const itemPath = path.join(targetPath, item);
-    const stats = fs.statSync(itemPath);
-
-    if (stats.isFile()) {
-      rutas.push(itemPath);
-    } else if (stats.isDirectory()) {
-      const tempRoutes = getDirectoryFiles(itemPath); // Llamada recursiva con itemPath
-      rutas = [...rutas, ...tempRoutes]; // Concatena las rutas devueltas por la llamada recursiva
-    }
-  });
-  return rutas; // Devuelve las rutas actualizadas en cada nivel de recursión
 }
+
 
 function mdlink(file, options) {
   return new Promise((resolve, reject) => {

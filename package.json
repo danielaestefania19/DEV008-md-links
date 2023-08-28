@@ -1,5 +1,5 @@
 {
-  "name": "@danielaecm/md-links",
+  "name": "@danielaestefania19/md-links",
   "version": "0.1.2",
   "description": "Una librería para extraer y analizar enlaces de archivos Markdown.",
   "scripts": {
@@ -20,10 +20,15 @@
   "directories": {
     "test": "test"
   },
-  "author": "Daniela Castellano",
+  "author":{
+  "name":"Daniela Castellano",
+  "email": "danielacastellano1000@gmail.com",
+  "url": "https://github.com/danielaestefania19/DEV008-md-links"
+  },
+
   "license": "ISC",
   "engines": {
     "node": ">=16.x"
   }
 }
-
+  
