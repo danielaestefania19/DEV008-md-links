@@ -1,14 +1,7 @@
 {
-  "name": "md-links",
-  "version": "0.1.0",
-  "engines": {
-    "node": ">=16.x"
-  },
-  "bootcamp": {
-    "createdAt": "2023-06-28T16:05:09.952Z",
-    "version": "6.3.0",
-    "commit": "a942adeb868f1fe54b86e34cc4fc4ddb0601700d"
-  },
+  "name": "@danielaecm/md-links",
+  "version": "0.1.2",
+  "description": "Una librería para extraer y analizar enlaces de archivos Markdown.",
   "scripts": {
     "start": "node ./index.js",
     "test": "jest --coverage"
@@ -16,19 +9,21 @@
   "dependencies": {
     "axios": "^1.5.0",
     "debug": "^4.3.4",
-    "node": "^20.5.1",
-    "node-fetch": "^3.3.2",
+    "node-fetch": "^2.6.5",
     "path": "^0.12.7",
     "yargs": "^17.7.2"
   },
   "devDependencies": {
     "jest": "^29.6.4"
   },
-  "description": "* [1. Preámbulo](#1-preámbulo)\r * [2. Resumen del proyecto](#2-resumen-del-proyecto)\r  * [3. Intalación de libería](#3-intalación-de-librería)\r * [4. Uso de la librería](#4-uso-de-la-librería)\r ",
   "main": "index.js",
   "directories": {
     "test": "test"
   },
-  "author": "",
-  "license": "ISC"
+  "author": "Daniela Castellano",
+  "license": "ISC",
+  "engines": {
+    "node": ">=16.x"
+  }
 }
+
